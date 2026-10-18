@@ -1,52 +1,27 @@
-// Task 4 test program: drives the OLED menu from the keyboard over serial,
-// since the buttons don't exist yet. Replaced by the button test in Task 5.
-//
-// Keys: m = open, w = up, s = down, d = select, a = close, h = test message
+// Task 5 test program: prints every button event over serial.
+// Replaced by the real remote in Task 6.
 #include <Arduino.h>
-#include "commands.h"
+#include "buttons.h"
 #include "menu.h"
 
 void setup() {
   Serial.begin(115200);
   delay(500); // give the serial monitor a moment to connect
 
+  // Only so the OLED switches off: it keeps showing its last picture across
+  // ESP32 resets, because it stays powered from the rail.
   menu::begin();
+  menu::update(millis());
+
+  buttonsBegin();
 
   Serial.println();
-  Serial.println("Menu test. Keys: m=open  w=up  s=down  d=select  a=close  h=message");
+  Serial.println("Button test: press, hold and release buttons.");
 }
 
 void loop() {
-  if (Serial.available() > 0) {
-    char key = Serial.read();
-
-    switch (key) {
-      case 'm':
-        menu::open();
-        break;
-      case 'w':
-        menu::up();
-        break;
-      case 's':
-        menu::down();
-        break;
-      case 'd': {
-        // Braces give this case its own scope, so it can declare a variable.
-        menu::flashSelected();
-        const Command& cmd = kCommands[menu::selected()];
-        Serial.printf("SELECT %s %s\n", deviceLabel(cmd.device), cmd.name);
-        break;
-      }
-      case 'a':
-        menu::close();
-        break;
-      case 'h':
-        menu::showMessage("Hello", 1000);
-        break;
-      default:
-        break; // ignore anything else, e.g. the newline from Enter
-    }
+  ButtonEvent e;
+  while (buttonsPoll(millis(), e)) {
+    Serial.printf("%-9s %-7s %lu\n", buttonName(e.button), eventName(e.type), (unsigned long)e.heldMs);
   }
-
-  menu::update(millis()); // every loop: runs the menu's timers and redraws if needed
 }
